@@ -1,8 +1,5 @@
 import asyncio
-from json import JSONDecodeError
-from msilib import datasizemask
 import httpx
-from numpy import iterable
 
 def fetch_game_data(username, request_limit=50):
     async def main(username):
@@ -10,6 +7,7 @@ def fetch_game_data(username, request_limit=50):
         async def get_game_in_month(client, url, username):
             games = await client.get(url)
             for _ in range(request_limit):
+                # if status error then retry
                 if games.status_code == 200:
                     break
                 print(f'url:{url} , status:{games.status_code} {_+2}')
@@ -31,7 +29,7 @@ def fetch_game_data(username, request_limit=50):
                 'url':game_data['url'],
                 'time_control':game_data['time_control'],
                 'time_class':game_data['time_class'],
-                'time':int(game_data['end_time'] * 1000),
+                'time':int(game_data['end_time']),
                 'rules': game_data['rules'],
                 }
             if game_data['white']['username'].upper() == username.upper():
@@ -46,7 +44,7 @@ def fetch_game_data(username, request_limit=50):
             return return_data
 
         # games url for each months
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=None) as client:
             game_int_month_api_urls = await client.get(f'https://api.chess.com/pub/player/{username}/games/archives')
             for _ in range(request_limit):
                 print(f'username:{username} , status:{game_int_month_api_urls.status_code} {_+1}')
@@ -64,7 +62,12 @@ def fetch_game_data(username, request_limit=50):
     return asyncio.run(main(username))
 
 def flatten_list(l):
-    for e in l:
-        if type(e) != list:
-            print(e)
-    return [e for sublist in l for e in sublist if l is not None]
+    return_list = []
+    for sublist in l:
+        try:
+            iter(sublist)
+            for e in sublist:
+                return_list.append(e)
+        except TypeError:
+            print('AAAAAAAAAAAAAAAAAAAAAAAA', sublist, type(sublist))
+    return return_list
